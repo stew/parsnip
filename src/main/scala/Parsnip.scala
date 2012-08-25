@@ -123,7 +123,7 @@ package parsnip {
       }
     }
 
-    implicit val parserInstance: Monad[Parser] with Applicative[Parser] = new Monad[Parser] with Applicative[Parser] with Apply[Parser] {
+    implicit val parserInstance: Monad[Parser] with Applicative[Parser] = new Monad[Parser] with Apply[Parser] {
       def point[A](a: => A) : Parser[A] = Parser.value(a)
 
       override def map[A, B](fa: Parser[A])(f: A => B) = Parser[B] { x =>

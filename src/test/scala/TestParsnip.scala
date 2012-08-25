@@ -184,7 +184,13 @@ class ParsnipSpec extends Specification with ResultMatchers {
   }
 
   "parsers" should {
-    "combine with Apply" in {
+    "be a Functor" in {
+      val d : Parser[Char] = digit
+      val ds : Parser[String] = d.map(_.toString)
+      ds.parse("1".toStream) should succeedWith("1")
+    }
+
+    "be Applicative" in {
       val s = str("asdf")
       val d = digit
       case class Fluffy(a: String, b: Char)
@@ -192,14 +198,19 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse("asdf1".toStream) should succeedWith(Fluffy("asdf", '1'))
     }
 
-    "are monadic" in {
+    "be a Monad" in {
       case class Huffy(a: Char, b: Char, c: String)
-      val p = for (
+      val p : Parser[Huffy] = for (
         a <- digit;
         b <- digit;
         s <- str("asdf")
       ) yield (Huffy(a, b, s))
       p.parse("11asdf".toStream) should succeedWith(Huffy('1', '1', "asdf"))
+    }
+
+    "be Pointed" in {
+      val p : Parser[Double] = 1.2.point[Parser]
+      p.parse(Stream.Empty) should succeedWith(1.2)
     }
   }
 }
