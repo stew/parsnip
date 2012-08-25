@@ -1,0 +1,4 @@
+This is a parser relying on scalaz 7 I wrote mostly as an exercise.  I
+believe it is fully functional.  The test cases should demonstrate how
+it might be used.
+
