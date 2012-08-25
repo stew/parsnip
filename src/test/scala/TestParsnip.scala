@@ -1,8 +1,7 @@
 package parsnip
 
 import Parser._
-import scalaz._ ; import Scalaz._
-
+import scalaz._; import Scalaz._
 
 import org.specs2.mutable._
 import org.specs2.matcher._
@@ -10,20 +9,20 @@ import org.specs2.matcher._
 class ParsnipSpec extends Specification with ResultMatchers {
 
   /** success matcher for a Validation */
-  def beSuccessful[E, A]: Matcher[Validation[E, A]] = (v: Validation[E, A]) => (v.fold(_ => false, _ => true), v+" successful", v+" is not successfull")
+  def beSuccessful[E, A]: Matcher[Validation[E, A]] = (v: Validation[E, A]) => (v.fold(_ => false, _ => true), v + " successful", v + " is not successfull")
 
   /** failure matcher for a Validation */
-  def beAFailure[E, A]: Matcher[Validation[E, A]] = (v: Validation[E, A]) => (v.fold(_ => true, _ => false), v+" is a failure", v+" is not a failure")
+  def beAFailure[E, A]: Matcher[Validation[E, A]] = (v: Validation[E, A]) => (v.fold(_ => true, _ => false), v + " is a failure", v + " is not a failure")
 
   /** success matcher for a Validation with a specific value */
-  def succeedWith[E, A](a: =>A) = validationWith[E, A](Success(a))
+  def succeedWith[E, A](a: => A) = validationWith[E, A](Success(a))
 
   /** failure matcher for a Validation with a specific value */
-  def failWith[E, A](e: =>E) = validationWith[E, A](Failure(e))
+  def failWith[E, A](e: => E) = validationWith[E, A](Failure(e))
 
-  private def validationWith[E, A](f: =>Validation[E, A]): Matcher[Validation[E, A]] = (v: Validation[E, A]) => {
+  private def validationWith[E, A](f: => Validation[E, A]): Matcher[Validation[E, A]] = (v: Validation[E, A]) => {
     val expected = f
-    (expected == v, v+" is a "+expected, v+" is not aa "+expected)
+    (expected == v, v + " is a " + expected, v + " is not aa " + expected)
   }
 
   "digit parser" should {
@@ -131,7 +130,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse("qwer".toStream) should succeedWith(List("qwer"))
     }
     "match more items" in {
-      p.parse("qwerqwerqwerqwer".toStream) should succeedWith(List("qwer","qwer","qwer","qwer"))
+      p.parse("qwerqwerqwerqwer".toStream) should succeedWith(List("qwer", "qwer", "qwer", "qwer"))
     }
   }
 
@@ -144,7 +143,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse("qwer".toStream) should succeedWith(NonEmptyList("qwer"))
     }
     "match more items" in {
-      p.parse("qwerqwerqwerqwer".toStream) should succeedWith(NonEmptyList("qwer","qwer","qwer","qwer"))
+      p.parse("qwerqwerqwerqwer".toStream) should succeedWith(NonEmptyList("qwer", "qwer", "qwer", "qwer"))
     }
   }
 
@@ -177,7 +176,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse("asdf".toStream) should beAFailure
     }
     "succeed if enough present" in {
-      p.parse("asdfasdfasdf".toStream) should succeedWith(Seq("asdf","asdf","asdf"))
+      p.parse("asdfasdfasdf".toStream) should succeedWith(Seq("asdf", "asdf", "asdf"))
     }
     "fail if too many present" in {
       p.parse("asdfasdfasdfasdf".toStream) should beAFailure
@@ -189,8 +188,18 @@ class ParsnipSpec extends Specification with ResultMatchers {
       val s = str("asdf")
       val d = digit
       case class Fluffy(a: String, b: Char)
-      val p : Parser[Fluffy] = ^(s,d)(Fluffy)
-      p.parse("asdf1".toStream) should succeedWith(Fluffy("asdf",'1'))
+      val p: Parser[Fluffy] = ^(s, d)(Fluffy)
+      p.parse("asdf1".toStream) should succeedWith(Fluffy("asdf", '1'))
+    }
+
+    "are monadic" in {
+      case class Huffy(a: Char, b: Char, c: String)
+      val p = for (
+        a <- digit;
+        b <- digit;
+        s <- str("asdf")
+      ) yield (Huffy(a, b, s))
+      p.parse("11asdf".toStream) should succeedWith(Huffy('1', '1', "asdf"))
     }
   }
 }
