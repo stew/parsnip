@@ -213,5 +213,9 @@ class ParsnipSpec extends Specification with ResultMatchers {
       val p : Parser[Double] = 1.2.point[Parser]
       p.parse(Stream.Empty) should succeedWith(1.2)
     }
+    
+    "be a Semigroup" in {
+      (str("a") |+| str("b")).parse("ab".toStream) should succeedWith("ab")
+    }
   }
 }

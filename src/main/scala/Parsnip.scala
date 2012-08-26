@@ -92,6 +92,8 @@ package parsnip {
         }
     }
 
+    def ++[AA](next: Parser[AA])(implicit append: Monoid[AA], ev: <:<[A,AA]) : Parser[AA] = ^(self, next){ (a,b) => append.append(a,b)}
+
     /**
      * parse the given input, and return Success only if parsing is successful and all
      * of the input is consumed
@@ -101,6 +103,7 @@ package parsnip {
       case Success((i, s)) => UnconsumedInput(i.toString).failure
       case Failure(f) => Failure(f)
     }
+
   }
 
   object Parser {
@@ -156,6 +159,11 @@ package parsnip {
 
     implicit def strParser(s: String): Parser[String] = str(s)
     implicit def charParser(c: Char): Parser[Char] = char(c)
+
+    implicit def parserMonoid[A: Monoid] : Monoid[Parser[A]] = new Monoid[Parser[A]] {
+      def append(a: Parser[A], aa: => Parser[A]) = a ++ aa
+      def zero: Parser[A] = (Monoid[A].zero).point[Parser]
+    }
 
     implicit val parserInstance: Monad[Parser] with Applicative[Parser] = new Monad[Parser] with Apply[Parser] {
       def point[A](a: => A): Parser[A] = Parser.value(a)
