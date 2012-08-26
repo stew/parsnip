@@ -205,6 +205,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
         b <- digit;
         s <- str("asdf")
       ) yield (Huffy(a, b, s))
+        
       p.parse("11asdf".toStream) should succeedWith(Huffy('1', '1', "asdf"))
     }
 

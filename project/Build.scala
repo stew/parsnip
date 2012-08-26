@@ -14,7 +14,7 @@ object ParsnipBuild extends Build {
 
 
   val parsnipSettings = Defaults.defaultSettings ++ Seq(
-    organization := "vireo",
+    organization := "org.vireo",
     name         := "parsnip",
     version      := "0.1",
     scalaVersion := "2.9.2"
@@ -37,7 +37,6 @@ object Dependencies {
   val specs2Version = "1.9"
   val parsnip_dependencies = Seq(
     "org.scalaz" %% "scalaz-core" % scalazVersion,
-    "org.specs2" %% "specs2" % specs2Version,
-    "org.specs2" %% "specs2-scalaz-core" % "6.0.1"
+    "org.specs2" %% "specs2" % specs2Version
     )
 }
