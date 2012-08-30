@@ -183,6 +183,19 @@ class ParsnipSpec extends Specification with ResultMatchers {
     }
   }
 
+  "repsep" should { 
+    val p = repsep[String,Char]("asdf",',')
+    "parse an empty list" in {
+      p.parse(Stream.empty) should succeedWith(List[String]())
+    }
+    "parse a single rep" in {
+      p.parse("asdf".toStream) should succeedWith(List("asdf"))
+    }
+    "parse many reps" in {
+      p.parse("asdf,asdf,asdf,asdf".toStream) should succeedWith(List("asdf","asdf","asdf","asdf"))
+    }
+  }
+
   "parsers" should {
     "be a Functor" in {
       val d : Parser[Char] = digit

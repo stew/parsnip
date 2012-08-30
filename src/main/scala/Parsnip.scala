@@ -92,7 +92,8 @@ package parsnip {
         }
     }
 
-    def ++[AA](next: Parser[AA])(implicit append: Monoid[AA], ev: <:<[A,AA]) : Parser[AA] = ^(self, next){ (a,b) => append.append(a,b)}
+    def ++[AA](next: Parser[AA])(implicit append: Semigroup[AA], ev: <:<[A,AA]) : Parser[AA] = 
+      ^(self, next){ (a,b) => append.append(a,b)}
 
     /**
      * parse the given input, and return Success only if parsing is successful and all
@@ -156,6 +157,11 @@ package parsnip {
         UnexpectedString(input.take(5).toString).failure
       }
     }
+
+    // todo: free monad?
+    def seprep[A,B](rep: Parser[A], sep: Parser[B]) : Parser[List[A]] = (sep ~> rep).*
+    def repsep[A,B](rep: Parser[A], sep: Parser[B]) : Parser[List[A]] = 
+      ^(rep, seprep(rep,sep))(_ :: _) ||| value(List[A]())
 
     implicit def strParser(s: String): Parser[String] = str(s)
     implicit def charParser(c: Char): Parser[Char] = char(c)
