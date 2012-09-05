@@ -2,6 +2,17 @@ import scalaz._; import Scalaz._
 
 import scala.collection.LinearSeq
 
+case class Input(input: LinearSeq[Char],
+                 line: Int,
+                 col: Int) {
+  def head: Char = input.head
+  def tail: Input = 
+    if (input.head == '\n')
+      Input(input.tail, line+1, 0)
+    else
+      Input(input.tail, line, col+1)
+}
+
 package object parsnip {
   type Input = LinearSeq[Char]
   type ParseResult[+A] = Validation[ParsnipError, (Input, A)]
@@ -11,8 +22,8 @@ package parsnip {
 
   trait ParsnipError
 
-  case class UnexpectedChar(char: Char) extends ParsnipError
-  case class UnexpectedString(str: String) extends ParsnipError
+  case class UnexpectedChar(input: Input) extends ParsnipError
+  case class UnexpectedString(input: Input) extends ParsnipError
   case class UnconsumedInput(str: String) extends ParsnipError
   case class UnexpectedEnd() extends ParsnipError
   case class UnexpectedError(str: String) extends ParsnipError
@@ -120,7 +131,7 @@ package parsnip {
       else if (!input.isEmpty && accept(input.head))
         (input.tail, input.head).success
       else
-        UnexpectedChar(input.head).failure
+        UnexpectedChar(input).failure
     }
 
     def accept[A](accept: PartialFunction[Char, A]) = Parser { input =>
@@ -129,14 +140,14 @@ package parsnip {
       else if (accept.isDefinedAt(input.head))
         (input.tail, accept.apply(input.head)).success
       else
-        UnexpectedChar(input.head).failure
+        UnexpectedChar(input).failure
     }
 
     def char(c: Char) = Parser { input =>
       if (input.isEmpty)
         UnexpectedEnd().failure
       else if(c == input.head) (input.tail, input.head).success
-      else UnexpectedChar(input.head).failure
+      else UnexpectedChar(input).failure
     }
 
     def isHex(c: Char) =
@@ -154,7 +165,7 @@ package parsnip {
       if (input.startsWith(a)) {
         (input.drop(a.length), a).success
       } else {
-        UnexpectedString(input.take(5).toString).failure
+        UnexpectedString(input).failure
       }
     }
 
