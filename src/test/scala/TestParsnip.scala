@@ -1,26 +1,28 @@
 package parsnip
 
 import Parser._
+
 import scalaz._; import Scalaz._
 
 import org.specs2.mutable._
 import org.specs2.matcher._
 
+
 class ParsnipSpec extends Specification with ResultMatchers {
 
-  /** success matcher for a Validation */
-  def beSuccessful[E, A]: Matcher[Validation[E, A]] = (v: Validation[E, A]) => (v.fold(_ => false, _ => true), v + " successful", v + " is not successfull")
+  /** success matcher for a \/ */
+  def beSuccessful[E, A]: Matcher[\/[E, A]] = (v: \/[E, A]) => (v.fold(_ => false, _ => true), v + " successful", v + " is not successfull")
 
-  /** failure matcher for a Validation */
-  def beAFailure[E, A]: Matcher[Validation[E, A]] = (v: Validation[E, A]) => (v.fold(_ => true, _ => false), v + " is a failure", v + " is not a failure")
+  /** failure matcher for a \/ */
+  def beAFailure[E, A]: Matcher[\/[E, A]] = (v: \/[E, A]) => (v.fold(_ => true, _ => false), v + " is a failure", v + " is not a failure")
 
   /** success matcher for a Validation with a specific value */
-  def succeedWith[E, A](a: => A) = validationWith[E, A](Success(a))
+  def succeedWith[E, A](a: => A) = validationWith[E, A](a.right)
 
   /** failure matcher for a Validation with a specific value */
-  def failWith[E, A](e: => E) = validationWith[E, A](Failure(e))
+  def failWith[E, A](e: => E) = validationWith[E, A](e.left)
 
-  private def validationWith[E, A](f: => Validation[E, A]): Matcher[Validation[E, A]] = (v: Validation[E, A]) => {
+  private def validationWith[E, A](f: => \/[E, A]): Matcher[\/[E, A]] = (v: \/[E, A]) => {
     val expected = f
     (expected == v, v + " is a " + expected, v + " is not aa " + expected)
   }
@@ -28,158 +30,159 @@ class ParsnipSpec extends Specification with ResultMatchers {
   "digit parser" should {
     "parse a digit" in {
 
-      digit("11".toStream) should beSuccessful
-      digit.parse("1".toStream) should succeedWith('1')
+      digit("11") should beSuccessful
+      digit.parse("1") should succeedWith('1')
     }
+
     "parse only digits" in {
-      digit("a11".toStream) should beAFailure
-      digit.parse("a".toStream) should beAFailure
-      digit.parse("11".toStream) should beAFailure
+      digit("a11") should beAFailure
+      digit.parse("a") should beAFailure
+      digit.parse("11") should beAFailure
     }
   }
 
   "alpha parser" should {
     "parse a letter" in {
 
-      alpha("a11".toStream) should beSuccessful
-      alpha.parse("a".toStream) should succeedWith('a')
+      alpha("a11") should beSuccessful
+      alpha.parse("a") should succeedWith('a')
     }
     "parse only letters" in {
-      alpha("11".toStream) should beAFailure
-      alpha.parse("aa".toStream) should beAFailure
-      alpha.parse("1".toStream) should beAFailure
+      alpha("11") should beAFailure
+      alpha.parse("aa") should beAFailure
+      alpha.parse("1") should beAFailure
     }
   }
 
   "alnum parser" should {
     "parse a letter or number" in {
-      alnum("a11".toStream) should beSuccessful
-      alnum("11".toStream) should beSuccessful
-      alnum.parse("a".toStream) should succeedWith('a')
-      alnum.parse("1".toStream) should succeedWith('1')
+      alnum("a11") should beSuccessful
+      alnum("11") should beSuccessful
+      alnum.parse("a") should succeedWith('a')
+      alnum.parse("1") should succeedWith('1')
     }
     "parse only letters and numbers" in {
-      alnum("^11".toStream) should beAFailure
-      alnum.parse("aa".toStream) should beAFailure
+      alnum("^11") should beAFailure
+      alnum.parse("aa") should beAFailure
     }
   }
 
   "whitespace parser" should {
     "parse whitespace" in {
-      whitespace(" asdf".toStream) should beSuccessful
-      whitespace("\t".toStream) should beSuccessful
-      whitespace("\r".toStream) should beSuccessful
-      whitespace.parse("\n".toStream) should beSuccessful
-      whitespace(" \t\r\n".toStream) should beSuccessful
+      whitespace(" asdf") should beSuccessful
+      whitespace("\t") should beSuccessful
+      whitespace("\r") should beSuccessful
+      whitespace.parse("\n") should beSuccessful
+      whitespace(" \t\r\n") should beSuccessful
     }
     "parse only whitespace" in {
-      whitespace("x".toStream) should beAFailure
+      whitespace("x") should beAFailure
     }
   }
 
   "str parser" should {
     "parse strings" in {
-      str("asdf")("asdf".toStream) should beSuccessful
+      str("asdf")("asdf") should beSuccessful
     }
     "fail on an empty stream" in {
-      str("asdf")("".toStream) should beAFailure
+      str("asdf")("") should beAFailure
     }
   }
 
   "optional parser" should {
     "succeed when input is present" in {
-      (str("asdf")?).parse("asdf".toStream) should succeedWith("asdf".some)
+      (str("asdf")?).parse("asdf") should succeedWith("asdf".some)
     }
     "succeed when input is not present" in {
-      (str("asdf")?).parse("".toStream) should succeedWith(None)
+      (str("asdf")?).parse("") should succeedWith(None)
     }
   }
 
   "either parser" should {
     val p = (digit | str("asdf"))
     "succeed on the left" in {
-      p.parse("1".toStream) should succeedWith('1'.left[String])
+      p.parse("1") should succeedWith('1'.left[String])
     }
     "succeed on the right" in {
-      p.parse("asdf".toStream) should succeedWith("asdf".right[Char])
+      p.parse("asdf") should succeedWith("asdf".right[Char])
     }
     "fail if neither found" in {
-      p.parse("qwer".toStream) should beAFailure
+      p.parse("qwer") should beAFailure
     }
   }
 
   "either either either parser" should {
     val p = (str("qwer") ||| str("asdf"))
     "succeed on the left" in {
-      p.parse("qwer".toStream) should succeedWith("qwer")
+      p.parse("qwer") should succeedWith("qwer")
     }
     "succeed on the right" in {
-      p.parse("asdf".toStream) should succeedWith("asdf")
+      p.parse("asdf") should succeedWith("asdf")
     }
     "fail if neither found" in {
-      p.parse("".toStream) should beAFailure
+      p.parse("") should beAFailure
     }
   }
 
   "star parser" should {
     val p = (str("qwer")*)
     "match zero items" in {
-      p.parse("".toStream) should succeedWith(List[String]())
+      p.parse("") should succeedWith(List[String]())
     }
     "match one item" in {
-      p.parse("qwer".toStream) should succeedWith(List("qwer"))
+      p.parse("qwer") should succeedWith(List("qwer"))
     }
     "match more items" in {
-      p.parse("qwerqwerqwerqwer".toStream) should succeedWith(List("qwer", "qwer", "qwer", "qwer"))
+      p.parse("qwerqwerqwerqwer") should succeedWith(List("qwer", "qwer", "qwer", "qwer"))
     }
   }
 
   "plus parser" should {
     val p = (str("qwer")+)
     "fail with zero items" in {
-      p.parse("".toStream) should beAFailure
+      p.parse("") should beAFailure
     }
     "match one item" in {
-      p.parse("qwer".toStream) should succeedWith(NonEmptyList("qwer"))
+      p.parse("qwer") should succeedWith(NonEmptyList("qwer"))
     }
     "match more items" in {
-      p.parse("qwerqwerqwerqwer".toStream) should succeedWith(NonEmptyList("qwer", "qwer", "qwer", "qwer"))
+      p.parse("qwerqwerqwerqwer") should succeedWith(NonEmptyList("qwer", "qwer", "qwer", "qwer"))
     }
   }
 
   "ignore right parser" should {
     val p = (str("asdf") <~ str("qwer"))
     "fail unless both are found" in {
-      p.parse("asdf".toStream) should beAFailure
-      p.parse("qwer".toStream) should beAFailure
+      p.parse("asdf") should beAFailure
+      p.parse("qwer") should beAFailure
     }
     "succeed with left when both are present" in {
-      p.parse("asdfqwer".toStream) should succeedWith("asdf")
+      p.parse("asdfqwer") should succeedWith("asdf")
     }
   }
 
   "ignore left parser" should {
     val p = (str("asdf") ~> str("qwer"))
     "fail unless both are found" in {
-      p.parse("asdf".toStream) should beAFailure
-      p.parse("qwer".toStream) should beAFailure
+      p.parse("asdf") should beAFailure
+      p.parse("qwer") should beAFailure
     }
     "succeed with left when both are present" in {
-      p.parse("asdfqwer".toStream) should succeedWith("qwer")
+      p.parse("asdfqwer") should succeedWith("qwer")
     }
   }
 
   "times parser" should {
     val p = (str("asdf").times(3))
     "fail if too few are found" in {
-      p.parse("asdfasdf".toStream) should beAFailure
-      p.parse("asdf".toStream) should beAFailure
+      p.parse("asdfasdf") should beAFailure
+      p.parse("asdf") should beAFailure
     }
     "succeed if enough present" in {
-      p.parse("asdfasdfasdf".toStream) should succeedWith(Seq("asdf", "asdf", "asdf"))
+      p.parse("asdfasdfasdf") should succeedWith(Seq("asdf", "asdf", "asdf"))
     }
     "fail if too many present" in {
-      p.parse("asdfasdfasdfasdf".toStream) should beAFailure
+      p.parse("asdfasdfasdfasdf") should beAFailure
     }
   }
 
@@ -189,18 +192,18 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse(Stream.empty) should succeedWith(List[String]())
     }
     "parse a single rep" in {
-      p.parse("asdf".toStream) should succeedWith(List("asdf"))
+      p.parse("asdf") should succeedWith(List("asdf"))
     }
     "parse many reps" in {
-      p.parse("asdf,asdf,asdf,asdf".toStream) should succeedWith(List("asdf","asdf","asdf","asdf"))
+      p.parse("asdf,asdf,asdf,asdf") should succeedWith(List("asdf","asdf","asdf","asdf"))
     }
   }
 
   "parsers" should {
     "be a Functor" in {
       val d : Parser[Char] = digit
-      val ds : Parser[String] = d.map(_.toString)
-      ds.parse("1".toStream) should succeedWith("1")
+      val ds : Parser[String] = d.map { c: Char => c.toString }
+      ds.parse("1") should succeedWith("1")
     }
 
     "be Applicative" in {
@@ -208,7 +211,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
       val d = digit
       case class Fluffy(a: String, b: Char)
       val p: Parser[Fluffy] = ^(s, d)(Fluffy)
-      p.parse("asdf1".toStream) should succeedWith(Fluffy("asdf", '1'))
+      p.parse("asdf1") should succeedWith(Fluffy("asdf", '1'))
     }
 
     "be a Monad" in {
@@ -219,7 +222,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
         s <- str("asdf")
       ) yield (Huffy(a, b, s))
         
-      p.parse("11asdf".toStream) should succeedWith(Huffy('1', '1', "asdf"))
+      p.parse("11asdf") should succeedWith(Huffy('1', '1', "asdf"))
     }
 
     "be Pointed" in {
@@ -228,7 +231,7 @@ class ParsnipSpec extends Specification with ResultMatchers {
     }
     
     "be a Semigroup" in {
-      (str("a") |+| str("b")).parse("ab".toStream) should succeedWith("ab")
+      (str("a") |+| str("b")).parse("ab") should succeedWith("ab")
     }
   }
 }
