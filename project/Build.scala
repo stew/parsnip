@@ -29,11 +29,11 @@ object ParsnipBuild extends Build {
 
 object Resolvers {
   val sonatype_snapshots = "sonatype snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-  val repos = Seq(sonatype_snapshots )
+  val repos = Seq()//sonatype_snapshots )
 }
 
 object Dependencies {
-  val scalazVersion = "7.0.0-M3"
+  val scalazVersion = "7.0-SNAPSHOT"
   val specs2Version = "1.9"
   val parsnip_dependencies = Seq(
     "org.scalaz" %% "scalaz-core" % scalazVersion,

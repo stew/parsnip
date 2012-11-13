@@ -200,13 +200,23 @@ class ParsnipSpec extends Specification with ResultMatchers {
   }
 
   "parsers" should {
+    "be Pointed" in {
+      val p : Parser[Double] = 1.2.point[Parser]
+      p.parse(Stream.Empty) should succeedWith(1.2)
+    }
+    
+    "be a Semigroup" in {
+      (str("a") |+| str("b")).parse("ab") should succeedWith("ab")
+    }
+
     "be a Functor" in {
       val d : Parser[Char] = digit
       val ds : Parser[String] = d.map { c: Char => c.toString }
+      d.parse("1") should succeedWith('1')
       ds.parse("1") should succeedWith("1")
     }
 
-    "be Applicative" in {
+    "have an Apply instance" in {
       val s = str("asdf")
       val d = digit
       case class Fluffy(a: String, b: Char)
@@ -214,7 +224,15 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse("asdf1") should succeedWith(Fluffy("asdf", '1'))
     }
 
-    "be a Monad" in {
+    "have an Applicative instance" in {
+      val s = str("asdf")
+      val d = digit
+      case class Fluffy(a: String, b: Char)
+      val p: Parser[Fluffy] = (s |@| d)(Fluffy)
+      p.parse("asdf1") should succeedWith(Fluffy("asdf", '1'))
+    }
+
+    "have a Monad instance" in {
       case class Huffy(a: Char, b: Char, c: String)
       val p : Parser[Huffy] = for (
         a <- digit;
@@ -225,13 +243,5 @@ class ParsnipSpec extends Specification with ResultMatchers {
       p.parse("11asdf") should succeedWith(Huffy('1', '1', "asdf"))
     }
 
-    "be Pointed" in {
-      val p : Parser[Double] = 1.2.point[Parser]
-      p.parse(Stream.Empty) should succeedWith(1.2)
-    }
-    
-    "be a Semigroup" in {
-      (str("a") |+| str("b")).parse("ab") should succeedWith("ab")
-    }
   }
 }

@@ -9,31 +9,53 @@ package object parsnip {
 
 package parsnip {
   case class Input(input: LinearSeq[Char],
+                   partialCurrentLine: Cord,
                    line: Int,
                    col: Int) {
     def head: Char = input.head
     def tail: Input = 
       if (input.head == '\n')
-        Input(input.tail, line+1, 0)
+        Input(input.tail, Cord.empty, line+1, 0)
       else
-        Input(input.tail, line, col+1)
+        Input(input.tail, partialCurrentLine :- input.head, line, col+1)
     def isEmpty = input.isEmpty
     def startsWith(a: String) = input.startsWith(a)
-    def drop(n: Int): Input = if(n == 0 ) this else this.tail.drop(n-1)
+    def drop(n: Int): Input = if(n == 0) this else this.tail.drop(n-1)
+    def currentLine: String = {
+      input.takeWhile(_ != '\n').foldLeft(partialCurrentLine){case (r,c) => r :- c}.toString
+    }
   }
 
   object Input {
-    implicit def fromString(a: String) : Input = Input(a.toStream, 0, 0)
-    implicit def fromString(a: LinearSeq[Char]) : Input = Input(a, 0, 0)
+    implicit def fromString(a: String) : Input = Input(a.toStream, Cord.empty, 0, 0)
+    implicit def fromString(a: LinearSeq[Char]) : Input = Input(a, Cord.empty, 0, 0)
   }
 
 
   trait ParsnipError
 
-  case class UnexpectedChar(input: Input) extends ParsnipError
-  case class UnexpectedString(input: Input) extends ParsnipError
-  case class UnconsumedInput(str: String) extends ParsnipError
+  abstract class PrettyParsnipError(error: String, input: Input) extends ParsnipError {
+    override def toString : String = {
+      "%s on line: %d, col: %d: \n%s\n%s^\n".format(
+        error,
+        input.line+1, input.col+1,
+        input.currentLine,
+        (" " * input.col)
+      )
+    }
+  }
+
+  case class UnexpectedChar(input: Input) 
+       extends PrettyParsnipError("Unexpected character", input)
+
+  case class UnexpectedString(input: Input) 
+       extends PrettyParsnipError("Unexpected string", input)
+
+  case class UnconsumedInput(str: String, input: Input) 
+       extends PrettyParsnipError("Unconsumed Input: %s ".format(str), input) 
+
   case class UnexpectedEnd() extends ParsnipError
+
   case class UnexpectedError(str: String) extends ParsnipError
 
   trait Parser[+A] extends (Input => ParseResult[A]) { self =>
@@ -74,6 +96,14 @@ package parsnip {
         { case (i, a) => *(i) map (s => (s._1, a +: s._2)) })
     }
 
+    /**
+     * return a Parser[Cord] which uses this parser to match zero or more times
+     */
+    def *@[B >: A](implicit showa: Show[B]) : Parser[Cord] = Parser[Cord] { input =>
+      self(input) fold (
+        { _ => (input, Cord.empty).right },
+        { case (i, a) => *@(showa)(i) map (s => (s._1, showa.show(a) |+| s._2)) })
+    }
 
     /**
      * return a Parser[NonEmptyList[A]] which uses this parser to match one or more times
@@ -105,6 +135,11 @@ package parsnip {
           { case (i, a) => f(a)(i) })
     }
 
+    def map[B](f: A=>B) = Parser[B] { x =>
+        self(x) map { case (i, a) => (i,f(a)) }
+    }
+
+
     def ++[AA](next: Parser[AA])(implicit append: Semigroup[AA], ev: <:<[A,AA]) : Parser[AA] = 
       ^(self, next){ (a,b) => append.append(a,b)}
 
@@ -115,7 +150,7 @@ package parsnip {
     def parse(input: Input): ParsnipError \/ A = 
       self(input) fold (
         {f => f.left},
-        {case (i,s) => if(i.isEmpty) s.right else UnconsumedInput(i.toString).left })
+        {case (i,s) => if(i.isEmpty) s.right else UnconsumedInput(i.toString, i).left })
    }
 
   object Parser {
@@ -128,7 +163,7 @@ package parsnip {
     def charAccept(accept: (Char => Boolean)) = Parser { input =>
       if (input.isEmpty)
         UnexpectedEnd().left
-      else if (!input.isEmpty && accept(input.head))
+      else if (accept(input.head))
         (input.tail, input.head).right
       else
         UnexpectedChar(input).left
@@ -162,18 +197,26 @@ package parsnip {
     val whitespace = charAccept(_.isWhitespace)
 
     def str(a: String): Parser[String] = Parser { input =>
-      if (input.startsWith(a)) {
+      if (input.startsWith(a))
         (input.drop(a.length), a).right[ParsnipError]
-      } else {
+      else 
         UnexpectedString(input).left
-      }
     }
 
-    // todo: free monad?
     def seprep[A,B](rep: Parser[A], sep: Parser[B]) : Parser[List[A]] = (sep ~> rep).*
-    def repsep[A,B](rep: Parser[A], sep: Parser[B]) : Parser[List[A]] = 
-      ^(rep, seprep(rep,sep))(_ :: _) ||| value(List[A]())
 
+    def repsep1[A,B](rep: Parser[A], sep: Parser[B]) : Parser[NonEmptyList[A]] = 
+      ^(rep, seprep(rep,sep))(NonEmptyList(_, _ : _*))
+
+    def repsep[A,B](rep: Parser[A], sep: Parser[B]) : Parser[List[A]] = 
+      repsep1(rep, sep).map(_.list) ||| value(List[A]())
+
+    /** consumes no input, but produces the current line number */
+    def lineNumber : Parser[Int] = Parser { input => (input,input.line).right }
+
+    implicit def cordFromStringParser[A](s: Parser[A])(implicit showa: Show[A]) : Parser[Cord] = s.map(showa.show(_))
+    implicit def cordParserFromString(s: String): Parser[Cord] = str(s).map(_.show)
+    implicit def cordParserFromChar(c: Char): Parser[Cord] = char(c).map(_.show)
     implicit def strParser(s: String): Parser[String] = str(s)
     implicit def charParser(c: Char): Parser[Char] = char(c)
 
